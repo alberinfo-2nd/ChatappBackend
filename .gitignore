@@ -1,0 +1,7 @@
+*.o
+*.out
+*.exe
+program
+.clangd
+.vscode
+*.json
