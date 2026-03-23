@@ -1,5 +1,8 @@
-#include <httplib.h>
+#ifdef _WIN32
+#define _WIN32_WINNT 0x0A00
+#endif
 
+#include <httplib.h>
 //TODO: Make it HTTPS
 httplib::Server server;
 
