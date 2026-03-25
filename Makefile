@@ -9,6 +9,7 @@ RM_Command=""
 ifeq ($(OS), Windows_NT)
 	CPP_SOURCES=$(wildcard $(SRC_DIR)/*.cpp)
 	CXXFLAGS+=-lws2_32 -o program.exe
+	SHELL:=C:\WINDOWS\system32\cmd.exe
 	RM_Command=@if exist program.exe del /q program.exe
 else
 	CPP_SOURCES=$(shell find $(SRC_DIR) -type f -name '*.cpp')
