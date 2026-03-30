@@ -1,8 +1,9 @@
-#include <stdexcept>
+// Test for Windows
 #ifdef _WIN32
 #define _WIN32_WINNT 0x0A00
 #endif
 
+#include <stdexcept>
 #include <iostream>
 #include <string>
 #include <httplib.h>
@@ -28,6 +29,7 @@ int main()
     ******************************/
     server.Post("/login", [&userList, &adminUserList](const httplib::Request &request, httplib::Response &response){
         response.status = 200;
+        // Format for response message
         nlohmann::json response_message = {
             {"status", "Success"},
             {"message", "User created successfully"}
