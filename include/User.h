@@ -1,0 +1,57 @@
+#pragma once
+
+#include <optional>
+#include <string>
+#include <vector>
+
+class User {
+private:
+    std::string username;
+    std::string publicKey; //Generated with RSA or some ECDSA algo
+    int strikeCount;
+
+public:
+    User(std::string username , std::string public_key);
+    std::string getUsername(void) const;
+    std::string getPublicKey(void) const;
+    void report(void);
+};
+
+class AdminUser : public User {
+private:
+    std::string password; //SHA245
+
+public:
+    AdminUser(std::string username, std::string password, std::string public_key);
+};
+
+
+//
+template<class T>
+class UserList {
+private:
+    std::vector<T> list;
+
+public:
+    UserList() {
+        list.clear();
+    }
+
+    //returns true if the user already exists, false if it does not.
+    std::optional<std::reference_wrapper<const T>> searchUser(std::string username) const {
+        for(const auto &x : this->list) {
+            if(x.getUsername() == username) return x;
+        }
+
+        return std::nullopt;
+    }
+
+    void addUser(T user) {
+        try {
+            if(searchUser(user.getUsername())) throw "User is already logged in!";
+            list.push_back(user);
+        } catch(std::string &e) {
+            throw e;
+        }
+    }
+};

@@ -5,3 +5,4 @@ program
 .clangd
 .vscode
 *.json
+*.cfg
