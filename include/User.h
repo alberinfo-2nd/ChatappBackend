@@ -26,7 +26,11 @@ public:
 };
 
 
-//
+//Implementation added in User.h because templates are only visible to the current translation unit.
+//As such, if the template is separated in definition and implementation in two files, whichever
+//code tries to use the function will not see the implementation and will fail at linking
+//with an 'undefined reference to x' error. 
+
 template<class T>
 class UserList {
 private:
