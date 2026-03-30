@@ -41,7 +41,7 @@ public:
         list.clear();
     }
 
-    //returns constant reference to object if it exists
+    //returns true if the user already exists, false if it does not.
     std::optional<std::reference_wrapper<const T>> searchUser(std::string username) const {
         for(const auto &x : this->list) {
             if(x.getUsername() == username) return x;
