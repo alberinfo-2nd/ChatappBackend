@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -9,11 +10,15 @@ private:
     std::string username;
     std::string publicKey; //Generated with RSA or some ECDSA algo
     int strikeCount;
+    std::string authorizationToken; //Generated randomly when the user is created.
+
+    void setAuthorizationToken(std::string token);
 
 public:
     User(std::string username , std::string public_key);
     std::string getUsername(void) const;
     std::string getPublicKey(void) const;
+    std::string getAuthorizationToken(void) const;
     void report(void);
 };
 
@@ -52,9 +57,9 @@ public:
 
     void addUser(T user) {
         try {
-            if(searchUser(user.getUsername())) throw "User is already logged in!";
+            if(searchUser(user.getUsername())) throw std::logic_error("User is already logged in!");
             list.push_back(user);
-        } catch(std::string &e) {
+        } catch(std::logic_error& e) {
             throw e;
         }
     }

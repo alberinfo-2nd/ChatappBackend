@@ -49,21 +49,25 @@ int main()
             try {
                 if(!user_data.contains("password")) {
                     //Normal user
-                    userList.addUser(User(user_data["username"], user_data["public_key"]));
+                    User newUser = User(user_data["username"], user_data["public_key"]);
+                    userList.addUser(newUser);
+                    response_message["authorization_token"] = newUser.getAuthorizationToken();
                 } else {
                     //Admin user
-                    adminUserList.addUser(AdminUser(user_data["username"], user_data["password"], user_data["public_key"]));
+                    AdminUser newUser = AdminUser(user_data["username"], user_data["password"], user_data["public_key"]);
+                    adminUserList.addUser(newUser);
+                    response_message["authorization_token"] = newUser.getAuthorizationToken();
                 }
             } catch(std::invalid_argument &e) {
                 response.status = 400;
                 response_message["status"] = "Failed";
                 response_message["message"] = e.what();
-            } catch(std::string &e) {
+            } catch(std::logic_error &e) {
                 response.status = 400;
                 response_message["status"] = "Failed";
-                response_message["message"] = e;
+                response_message["message"] = e.what();
             }
-        } catch (const std::invalid_argument &e) {// Invalid Request 
+        } catch (std::invalid_argument &e) {// Invalid Request 
             response.status = 400;
             response_message["status"] = "Failed";
             response_message["message"] = e.what();
