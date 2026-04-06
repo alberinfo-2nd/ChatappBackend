@@ -35,7 +35,45 @@ int main()
             {"message", "User created successfully"}
         };
 
+        auto user_data = nlohmann::json::parse(request.body);
         try {
+            if(!user_data.contains("password")) {
+                //Normal user
+                User newUser = User(user_data["username"], user_data["public_key"]);
+                userList.addUser(newUser);
+                response_message["authorization_token"] = newUser.getAuthorizationToken();
+            } else {
+                //Admin user
+                AdminUser newUser = AdminUser(user_data["username"], user_data["password"], user_data["public_key"]);
+                adminUserList.addUser(newUser);
+                response_message["authorization_token"] = newUser.getAuthorizationToken();
+            }
+        } catch(std::invalid_argument &e) {
+            response.status = 400;
+            response_message["status"] = "Failed";
+            response_message["message"] = e.what();
+        } catch(std::logic_error &e) {
+            response.status = 400;
+            response_message["status"] = "Failed";
+            response_message["message"] = e.what();
+        }
+
+        response.set_content(response_message.dump(), "application/json");
+    });
+
+    server.set_pre_request_handler([](const httplib::Request &request, httplib::Response& response) {
+        nlohmann::json response_message = {
+            {"status", "Success"},
+            {"message", "User created successfully"}
+        };
+
+        if(request.path == "/login") return httplib::Server::HandlerResponse::Unhandled;
+
+        try {
+            if(request.body.size() == 0) {
+                throw std::invalid_argument("Body has size zero!");
+            }
+
             // Extract info from request using Json 
             auto user_data = nlohmann::json::parse(request.body);
             if(!user_data.contains("username")) {
@@ -45,35 +83,22 @@ int main()
             if(!user_data.contains("public_key")) {
                 throw std::invalid_argument("public_key field was not provided!");
             }
-
-            try {
-                if(!user_data.contains("password")) {
-                    //Normal user
-                    User newUser = User(user_data["username"], user_data["public_key"]);
-                    userList.addUser(newUser);
-                    response_message["authorization_token"] = newUser.getAuthorizationToken();
-                } else {
-                    //Admin user
-                    AdminUser newUser = AdminUser(user_data["username"], user_data["password"], user_data["public_key"]);
-                    adminUserList.addUser(newUser);
-                    response_message["authorization_token"] = newUser.getAuthorizationToken();
-                }
-            } catch(std::invalid_argument &e) {
-                response.status = 400;
-                response_message["status"] = "Failed";
-                response_message["message"] = e.what();
-            } catch(std::logic_error &e) {
-                response.status = 400;
-                response_message["status"] = "Failed";
-                response_message["message"] = e.what();
+        
+            if(!request.has_header("authorizationToken")) {
+                throw std::invalid_argument("authorizationToken field was not provided!");
             }
-        } catch (std::invalid_argument &e) {// Invalid Request 
+        } catch(std::invalid_argument &e) {
             response.status = 400;
             response_message["status"] = "Failed";
             response_message["message"] = e.what();
-        }
 
-        response.set_content(response_message.dump(), "application/json");
+            response.set_content(response_message.dump(), "application/json");
+            return httplib::Server::HandlerResponse::Handled; //Does not continue to intended routing, exiting early.
+        }
+        //TODO: Check that authorizationToken is there
+
+        // Runs before every request
+        return httplib::Server::HandlerResponse::Unhandled;  // Continue to normal routing
     });
 
     // TODO: Switch between debug and production for localhost and 0.0.0.0 respectively
