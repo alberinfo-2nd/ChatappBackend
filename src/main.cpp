@@ -101,6 +101,49 @@ int main()
         return httplib::Server::HandlerResponse::Unhandled;  // Continue to normal routing
     });
 
+
+    /*****************
+    get request to send array of active users to the frontend
+    *******************/
+    server.Get("/active-users", [&userList, &adminUserList] (const httplib::Request &, httplib::Response &response){
+        nlohmann::json users = nlohmann::json::array({});
+        nlohmann::json response_message;
+        
+        try {
+            if (!userList.getUsers().empty()) {
+                for (const auto& user : userList.getUsers()) {
+                    users.push_back({
+                        {"username", user.getUsername()},
+                        {"type", "user"}
+                    });
+                } 
+            }
+            if (!adminUserList.getUsers().empty()) {
+                for (const auto& admin : adminUserList.getUsers()) {
+                    users.push_back({
+                        {"username", admin.getUsername()},
+                        {"type", "admin"}
+                    });
+                }
+            }
+        } catch(std::invalid_argument &e) {
+            response.status = 400;
+            response_message["status"] = "Failed";
+            response_message["message"] = e.what();
+        } catch(std::logic_error &e) {
+            response.status = 400;
+            response_message["status"] = "Failed";
+            response_message["message"] = e.what();
+        }
+
+        response.status = 200;
+        response_message["status"] = "success";
+        response_message["users"] = users;
+        response.set_content(response_message.dump(), "application/json");
+    }); 
+
+    
+
     // TODO: Switch between debug and production for localhost and 0.0.0.0 respectively
     server.listen("127.0.0.1", 8080);
 }

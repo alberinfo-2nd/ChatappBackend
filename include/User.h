@@ -79,14 +79,9 @@ public:
         }
     }
 
-    // used to get the list of currently logged in users returns their usernames
-    std::vector<std::string> getUsers() const {
-        std::vector<std::string> usernames;
-
-        for (const auto& x : this->list)
-            usernames.push_back(x.getUsername());
-
-        return usernames;
+    // used to get the list of currently logged in users
+    const std::vector<T>& getUsers() const {
+        return this->list;
     }
 
 };
