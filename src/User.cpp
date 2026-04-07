@@ -63,7 +63,7 @@ void User::report(void) {
 // ----------------------------------- //
 
 AdminUser::AdminUser(std::string username, std::string password, std::string public_key) : User(username, public_key) {
-    std::fstream admin_users("../admins.cfg");
+    std::fstream admin_users("./admins.cfg");
     if(!admin_users.is_open()) {
         throw std::logic_error("There was an error opening the when looking up the administrators!");
     }

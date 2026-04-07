@@ -84,4 +84,10 @@ public:
         return this->list;
     }
 
+    //True if there exists a user with the same username and same authToken. False otherwise
+    bool verifyAuthToken(std::string username, std::string authToken) const {
+        auto user = searchUser(username);
+        if(!user) return false;
+        return user->get().getAuthorizationToken() == authToken;
+    }
 };
