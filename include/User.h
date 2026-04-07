@@ -63,4 +63,30 @@ public:
             throw e;
         }
     }
+
+    // remove user by username
+    void removeUser(std::string username) {
+        try {
+            if(!searchUser(username)) throw std::logic_error("User not found");
+            for (auto i = this->list.begin(); i != this->list.end(); ++i ) {
+                if (i->getUsername() == username) {
+                    this->list.erase(i);
+                    return;
+                }
+            }
+        } catch(std::logic_error& e) {
+            throw e;
+        }
+    }
+
+    // used to get the list of currently logged in users returns their usernames
+    std::vector<std::string> getUsers() const {
+        std::vector<std::string> usernames;
+
+        for (const auto& x : this->list)
+            usernames.push_back(x.getUsername());
+
+        return usernames;
+    }
+
 };
