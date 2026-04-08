@@ -80,7 +80,7 @@ public:
     }
 
     // used to get the list of currently logged in users
-    const std::vector<T>& getUsers() const {
+    const std::vector<T>& getUsers() const noexcept {
         return this->list;
     }
 
