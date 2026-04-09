@@ -19,13 +19,68 @@ int main()
 
     httplib::Server server;
 
+    /********************************************** 
+    Todo ---- Authenticates users and validates administrative privileges 
+    Intercepts all API requests.
+    **********************************************/
+    server.set_pre_request_handler([&userList, &adminUserList](const httplib::Request &request, httplib::Response& response) {
+        auto user_data = nlohmann::json{};
+        nlohmann::json response_message = {
+            {"status", "Success"},
+            {"message", "User created successfully"}
+        };
+
+        // Check if contains data
+        try {
+            // Verify valid formating  
+            if(request.body.size() == 0 ) {
+                throw std::invalid_argument("Body has size zero!");
+            } 
+            if (!user_data.contains("username")) {
+                throw std::invalid_argument("username field was not provided!");
+            }
+            if (!user_data.contains("public_key")) {
+                throw std::invalid_argument("public_key field was not provided!");
+            }
+            if(!request.has_header("authorizationToken") && request.path != "/login") {
+                throw std::invalid_argument("authorizationToken field was not provided!");
+            }
+        } catch(std::invalid_argument &e) {
+            response.status = 400;
+            response_message["status"] = "Failed";
+            response_message["message"] = e.what();
+
+            response.set_content(response_message.dump(), "application/json");
+            return httplib::Server::HandlerResponse::Handled; //Does not continue to intended routing, exiting early.
+        }
+
+        
+        // Test for login
+        if(request.path == "/login") 
+            return httplib::Server::HandlerResponse::Unhandled;
+        
+        std::string username = user_data["username"];
+        std::string authToken = request.get_header_value("authorizationToken");
+        if(userList.verifyAuthToken(username, authToken) || adminUserList.verifyAuthToken(username, authToken)) {
+            return httplib::Server::HandlerResponse::Unhandled; //Continue to normal routing
+        }
+
+        // Nothing works send Error code
+        response.status = 403;
+        response_message["status"] = "Failed";
+        response_message["message"] = "Invalid authorization token or username";
+
+        response.set_content(response_message.dump(), "application/json");
+        return httplib::Server::HandlerResponse::Handled;  // User was not authorized!
+    });
+
     // Base response for GET
     server.Get("/", [](const httplib::Request &, httplib::Response &res){
         res.set_content("Hello World!\n", "text/plain");
     });
 
     /*****************************
-    Sign in requests from Front End
+    Login in requests from Front End
     ******************************/
     server.Post("/login", [&userList, &adminUserList](const httplib::Request &request, httplib::Response &response){
         response.status = 200;
@@ -34,16 +89,18 @@ int main()
             {"status", "Success"},
             {"message", "User created successfully"}
         };
-
+        
+        // Extract info from request using Json + check for requrments
         auto user_data = nlohmann::json::parse(request.body);
         try {
-            if(!user_data.contains("password")) {
-                //Normal user
+            if(!user_data.contains("password")) { 
+                // If Normal user
                 User newUser = User(user_data["username"], user_data["public_key"]);
                 userList.addUser(newUser);
                 response_message["authorization_token"] = newUser.getAuthorizationToken();
-            } else {
-                //Admin user
+            } 
+            else { 
+                // If Admin user
                 AdminUser newUser = AdminUser(user_data["username"], user_data["password"], user_data["public_key"]);
                 adminUserList.addUser(newUser);
                 response_message["authorization_token"] = newUser.getAuthorizationToken();
@@ -57,59 +114,8 @@ int main()
             response_message["status"] = "Failed";
             response_message["message"] = e.what();
         }
-
+        // Set response 
         response.set_content(response_message.dump(), "application/json");
-    });
-
-    server.set_pre_request_handler([&userList, &adminUserList](const httplib::Request &request, httplib::Response& response) {
-        nlohmann::json response_message = {
-            {"status", "Success"},
-            {"message", "User created successfully"}
-        };
-
-        auto user_data = nlohmann::json{};
-
-        try {
-            if(request.body.size() == 0) {
-                throw std::invalid_argument("Body has size zero!");
-            }
-
-            // Extract info from request using Json 
-            user_data = nlohmann::json::parse(request.body);
-            if(!user_data.contains("username")) {
-                throw std::invalid_argument("username field was not provided!");
-            }
-
-            if(!user_data.contains("public_key")) {
-                throw std::invalid_argument("public_key field was not provided!");
-            }
-        
-            if(!request.has_header("authorizationToken") && request.path != "/login") {
-                throw std::invalid_argument("authorizationToken field was not provided!");
-            }
-        } catch(std::invalid_argument &e) {
-            response.status = 400;
-            response_message["status"] = "Failed";
-            response_message["message"] = e.what();
-
-            response.set_content(response_message.dump(), "application/json");
-            return httplib::Server::HandlerResponse::Handled; //Does not continue to intended routing, exiting early.
-        }
-
-        if(request.path == "/login") return httplib::Server::HandlerResponse::Unhandled;
-
-        std::string username = user_data["username"];
-        std::string authToken = request.get_header_value("authorizationToken");
-        if(userList.verifyAuthToken(username, authToken) || adminUserList.verifyAuthToken(username, authToken)) {
-            return httplib::Server::HandlerResponse::Unhandled; //Continue to normal routing
-        }
-
-        response.status = 403;
-        response_message["status"] = "Failed";
-        response_message["message"] = "Invalid authorization token or username";
-
-        response.set_content(response_message.dump(), "application/json");
-        return httplib::Server::HandlerResponse::Handled;  // User was not authorized!
     });
 
 
@@ -121,7 +127,10 @@ int main()
         nlohmann::json response_message;
         
         for (const auto& user : userList.getUsers()) {
-            users.push_back(user.getUsername());
+            users.push_back({
+                {"username", user.getUsername()},
+                {"public_key", user.getPublicKey()}    
+            });
         }     
         
         response.status = 200;
