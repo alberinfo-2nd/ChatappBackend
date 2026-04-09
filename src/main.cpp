@@ -30,18 +30,20 @@ int main()
             {"message", "User created successfully"}
         };
 
-        // Check if contains data
         try {
-            // Verify valid formating  
+            // Check if contains data
             if(request.body.size() == 0 ) {
                 throw std::invalid_argument("Body has size zero!");
-            } 
+            }
+            
+            // Extract info from request using Json 
+            user_data = nlohmann::json::parse(request.body);
+
+            //Verify that required values are present
             if (!user_data.contains("username")) {
                 throw std::invalid_argument("username field was not provided!");
             }
-            if (!user_data.contains("public_key")) {
-                throw std::invalid_argument("public_key field was not provided!");
-            }
+
             if(!request.has_header("authorizationToken") && request.path != "/login") {
                 throw std::invalid_argument("authorizationToken field was not provided!");
             }
@@ -56,8 +58,7 @@ int main()
 
         
         // Test for login
-        if(request.path == "/login") 
-            return httplib::Server::HandlerResponse::Unhandled;
+        if(request.path == "/login") return httplib::Server::HandlerResponse::Unhandled;
         
         std::string username = user_data["username"];
         std::string authToken = request.get_header_value("authorizationToken");
@@ -93,13 +94,16 @@ int main()
         // Extract info from request using Json + check for requrments
         auto user_data = nlohmann::json::parse(request.body);
         try {
+            if (!user_data.contains("public_key")) {
+                throw std::invalid_argument("public_key field was not provided!");
+            }
+
             if(!user_data.contains("password")) { 
                 // If Normal user
                 User newUser = User(user_data["username"], user_data["public_key"]);
                 userList.addUser(newUser);
                 response_message["authorization_token"] = newUser.getAuthorizationToken();
-            } 
-            else { 
+            } else { 
                 // If Admin user
                 AdminUser newUser = AdminUser(user_data["username"], user_data["password"], user_data["public_key"]);
                 adminUserList.addUser(newUser);
