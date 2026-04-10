@@ -81,7 +81,7 @@ int main()
     });
 
     /*****************************
-    Login in requests from Front End
+    Login in / out requests from Front End
     ******************************/
     server.Post("/login", [&userList, &adminUserList](const httplib::Request &request, httplib::Response &response){
         response.status = 200;
@@ -119,6 +119,31 @@ int main()
             response_message["message"] = e.what();
         }
         // Set response 
+        response.set_content(response_message.dump(), "application/json");
+    });
+
+    server.Post("/logout", [&userList, &adminUserList](const httplib::Request &request, httplib::Response &response) {
+        response.status = 200;
+        // Format for response message
+        nlohmann::json response_message = {
+            {"status", "Success"},
+            {"message", "User deleted successfully"}
+        };
+        
+        // Extract info from request using Json + check for requrments
+        auto user_data = nlohmann::json::parse(request.body);
+        try {
+            userList.removeUser(user_data["username"]);
+        } catch(std::logic_error& e) {
+            try {
+                adminUserList.removeUser(user_data["username"]);
+            } catch(std::logic_error& e) {
+                response.status = 400;
+                response_message["status"] = "Failed";
+                response_message["message"] = e.what();
+            }
+        }
+
         response.set_content(response_message.dump(), "application/json");
     });
 

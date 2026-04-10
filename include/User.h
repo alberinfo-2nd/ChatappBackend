@@ -15,7 +15,7 @@ private:
     void setAuthorizationToken(std::string token);
 
 public:
-    User(std::string username , std::string public_key);
+    User(std::string username, std::string public_key);
     std::string getUsername(void) const;
     std::string getPublicKey(void) const;
     std::string getAuthorizationToken(void) const;
@@ -24,7 +24,7 @@ public:
 
 class AdminUser : public User {
 private:
-    std::string password; //SHA245
+    std::string password; //SHA256
 
 public:
     AdminUser(std::string username, std::string password, std::string public_key);
