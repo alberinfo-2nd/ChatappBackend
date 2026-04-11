@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <Message.h>
 
 class User {
 private:
@@ -11,6 +12,7 @@ private:
     std::string publicKey; //Generated with RSA or some ECDSA algo
     int strikeCount;
     std::string authorizationToken; //Generated randomly when the user is created.
+    mutable std::vector<std::shared_ptr<Message>> unreadMessages;
 
     void setAuthorizationToken(std::string token);
 
@@ -20,6 +22,9 @@ public:
     std::string getPublicKey(void) const;
     std::string getAuthorizationToken(void) const;
     void report(void);
+
+    std::vector<std::shared_ptr<Message>> getMessages(void) const;
+    void pushMessage(std::shared_ptr<Message> msg) const;
 };
 
 class AdminUser : public User {

@@ -60,6 +60,17 @@ void User::report(void) {
     }
 }
 
+std::vector<std::shared_ptr<Message>> User::getMessages(void) const {
+    // Moves ownership of pointer leaves unreadMsesages empty
+    return std::move(this->unreadMessages);
+}
+
+void User::pushMessage(std::shared_ptr<Message> msg) const {
+    //Validating data if want
+    this->unreadMessages.push_back(std::move(msg));
+}
+
+
 // ----------------------------------- //
 
 AdminUser::AdminUser(std::string username, std::string password, std::string public_key) : User(username, public_key) {
