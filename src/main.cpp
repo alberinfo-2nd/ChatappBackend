@@ -88,8 +88,7 @@ int main()
         // Format for response message
         nlohmann::json response_message = {
             {"status", "Success"},
-            {"message", ""},
-            {"authorizationToken", ""}
+            {"message", "User created successfully"}
         };
         
         // Extract info from request using Json + check for requrments
@@ -103,13 +102,12 @@ int main()
                 // If Normal user
                 User newUser = User(user_data["username"], user_data["public_key"]);
                 userList.addUser(newUser);
-                response_message["authorizationToken"] = newUser.getAuthorizationToken();
+                response_message["authorization_token"] = newUser.getAuthorizationToken();
             } else {
                 // If Admin user
                 AdminUser newUser = AdminUser(user_data["username"], user_data["password"], user_data["public_key"]);
                 adminUserList.addUser(newUser);
-                response_message["authorizationToken"] = newUser.getAuthorizationToken();
-                response_message["message"] = "Admin User Has been Created";
+                response_message["authorization_token"] = newUser.getAuthorizationToken();
             }
         } catch(std::invalid_argument &e) {
             response.status = 400;
@@ -173,6 +171,7 @@ int main()
     Send Message from User to User
     */
     server.Post("/sendMessage", [&userList, &adminUserList](const httplib::Request &request, httplib::Response &response){
+        response.status = 200;
         nlohmann::json response_message = {{"status", "Success"}, {"message", "message sent!"}};
         // Extract info from request using Json + check for requirments
         nlohmann::json user_data{};
@@ -183,6 +182,8 @@ int main()
             if (!user_data["message"].is_string())  throw std::invalid_argument("message was not a string");
             if (!user_data["recipient"].is_string())  throw std::invalid_argument("recipient was not a string");
  
+            if(user_data["username"] == user_data["recipient"]) throw std::invalid_argument("User cannot send messages to itself!");
+
             //*** Finding user to message ***/            
             // Check on userList then admin list
             auto userSearchResult = userList.searchUser(user_data["recipient"]);
@@ -194,20 +195,17 @@ int main()
                 user_data["username"], // Sender
                 user_data["message"]   // Message
             ));
-            response.status = 200;
-            response.set_content(response_message.dump(), "application/json");
-            
         } catch (std::invalid_argument &e){
             response.status = 400;
             response_message["status"] = "Failed";
             response_message["message"] = e.what();
-            response.set_content(response_message.dump(), "application/json");
         } catch(std::logic_error& e) {
-                response.status = 400;
-                response_message["status"] = "Failed";
-                response_message["message"] = e.what();
+            response.status = 400;
+            response_message["status"] = "Failed";
+            response_message["message"] = e.what();
         }
         
+        response.set_content(response_message.dump(), "application/json");
     });
 
     
@@ -215,7 +213,13 @@ int main()
     Read Message from User
     */
     server.Get("/readMessages", [&userList, &adminUserList](const httplib::Request &request, httplib::Response &response) {
-        nlohmann::json response_message = {{"status", "Success"}};
+        response.status = 200;
+        
+        nlohmann::json response_message = {
+            {"status", "Success"},
+            {"messages", nlohmann::json::array({})}
+        };
+
         nlohmann::json message_list{};
         try {
             // Extract info from request using Json + check for requrments        
@@ -227,25 +231,21 @@ int main()
 
             // Get internal message Pointers
             std::vector<std::shared_ptr<Message>> unreadMessagesPTRs = userSearchResult->get().getMessages();
-            if (unreadMessagesPTRs.empty()) throw std::invalid_argument("No unread Messages");
 
             // Extract message
             for(std::shared_ptr<Message> messagePTR : unreadMessagesPTRs) {
                 message_list.push_back(messagePTR->toJSON());
             }
+
+            response_message["messages"] = message_list;
         } catch(std::invalid_argument &e){
             response.status = 400;
             response_message["status"] = "Failed";
             response_message["message"] = e.what();
-            response.set_content(response_message.dump(), "application/json");
-
         }
-        response.status = 200;
-        response_message["messages"] = message_list;
+
         response.set_content(response_message.dump(), "application/json");
     });
-
-
 
     // TODO: Switch between debug and production for localhost and 0.0.0.0 respectively
     server.listen("127.0.0.1", 8080);
