@@ -13,7 +13,7 @@ public:
     //Constructors
     //Message() : timestamp(std::chrono::system_clock::now()) {}
     Message(std::string recipient, std::string body) 
-        : recipientUsername(recipient), content(body) /*timestamp(std::chrono::system_clock::now()*/{}
+        : recipientUsername(recipient), content(body), timestamp(std::chrono::system_clock::now()){}
     
     /* Returns the raw timestamp
     std::chrono::system_clock::time_point getTimestamp() const {
@@ -34,7 +34,7 @@ public:
     }
 
     const nlohmann::json toJSON() const {
-        return {{"sender", getSender()}, {"content", getContent()}};
+        return {{"timestamp", getTimeStamp()}, {"sender", getSender()}, {"content", getContent()}};
     }
 
 };
