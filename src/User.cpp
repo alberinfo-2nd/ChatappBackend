@@ -52,12 +52,11 @@ std::string User::getAuthorizationToken(void) const {
     return this->authorizationToken;
 }
 
-void User::report(void) {
+//Returns false if the user can stay in the session
+//Returns true if the user has to be kicked
+bool User::report(void) const {
     this->strikeCount++;
-
-    if(this->strikeCount >= 3) {
-        //TODO: Kick and send message!
-    }
+    return this->strikeCount >= 3;
 }
 
 std::vector<std::shared_ptr<Message>> User::getMessages(void) const {

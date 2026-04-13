@@ -247,6 +247,74 @@ int main()
         response.set_content(response_message.dump(), "application/json");
     });
 
+    server.Post("/report", [&userList, &adminUserList](const httplib::Request &request, httplib::Response &response) {
+        response.status = 200;
+        
+        nlohmann::json response_message = {
+            {"status", "Success"},
+            {"message", "User reported successfully"}
+        };
+
+        try {
+            auto user_data = nlohmann::json::parse(request.body);
+
+            if(!user_data.contains("reportedUser")) throw std::invalid_argument("reportedUser field was not provided!");
+
+            if(user_data["username"] == user_data["reportedUser"]) throw std::invalid_argument("user cannot report itself!");
+
+            auto reportedUser = userList.searchUser(user_data["reportedUser"]);
+            if(!reportedUser) reportedUser = adminUserList.searchUser(user_data["reportedUser"]);
+            if(!reportedUser) throw std::invalid_argument("Reported username does not exist!!");
+
+            bool kickUser = reportedUser->get().report();
+            if(kickUser) {
+                try {
+                    userList.removeUser(user_data["reportedUser"]);
+                } catch(...) {
+                    adminUserList.removeUser(user_data["reportedUser"]);
+                }
+            }
+        } catch(std::invalid_argument& e) {
+            response.status = 400;
+            response_message["status"] = "Failed";
+            response_message["message"] = e.what();
+        }
+
+        response.set_content(response_message.dump(), "application/json");
+    });
+
+    server.Post("/kick", [&userList](const httplib::Request &request, httplib::Response &response) {
+        response.status = 200;
+        
+        nlohmann::json response_message = {
+            {"status", "Success"},
+            {"message", "User kicked successfully"}
+        };
+        
+        try {
+            auto user_data = nlohmann::json::parse(request.body);
+
+            //Since we know username is in either userList or adminUserList, it showing up on userList means its not an admin user.
+            if(userList.searchUser(user_data["username"])) throw std::invalid_argument("User kicking has to be an admin_user");
+            if(!user_data.contains("kickedUser")) throw std::invalid_argument("kickedUser field was not provided!");
+            if(user_data["username"] == user_data["kickedUser"]) throw std::invalid_argument("user cannot kick itself!");
+
+            try {
+                userList.removeUser(user_data["kickedUser"]);
+            } catch(std::logic_error& e) {
+                response.status = 400;
+                response_message["status"] = "Failed";
+                response_message["message"] = e.what();
+            }
+        } catch(std::invalid_argument& e) {
+            response.status = 400;
+            response_message["status"] = "Failed";
+            response_message["message"] = e.what();
+        }
+
+        response.set_content(response_message.dump(), "application/json");
+    });
+
     // TODO: Switch between debug and production for localhost and 0.0.0.0 respectively
     server.listen("127.0.0.1", 8080);
 }

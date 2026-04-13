@@ -10,7 +10,7 @@ class User {
 private:
     std::string username;
     std::string publicKey; //Generated with RSA or some ECDSA algo
-    int strikeCount;
+    mutable int strikeCount;
     std::string authorizationToken; //Generated randomly when the user is created.
     mutable std::vector<std::shared_ptr<Message>> unreadMessages;
 
@@ -21,7 +21,7 @@ public:
     std::string getUsername(void) const;
     std::string getPublicKey(void) const;
     std::string getAuthorizationToken(void) const;
-    void report(void);
+    bool report(void) const;
 
     std::vector<std::shared_ptr<Message>> getMessages(void) const;
     void pushMessage(std::shared_ptr<Message> msg) const;
