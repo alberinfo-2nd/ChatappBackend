@@ -17,7 +17,7 @@ private:
     void setAuthorizationToken(std::string token);
 
 public:
-    User(std::string username, std::string public_key);
+    User(std::string username, std::string public_key, bool is_admin = false);
     std::string getUsername(void) const;
     std::string getPublicKey(void) const;
     std::string getAuthorizationToken(void) const;

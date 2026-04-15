@@ -27,7 +27,21 @@ std::string generateAuthorizationToken(void) {
     return authorizationToken;
 }
 
-User::User(std::string username , std::string public_key) {
+User::User(std::string username , std::string public_key, bool is_admin) {
+    if(!is_admin) {
+        std::fstream admin_users("./admins.cfg");
+        if(!admin_users.is_open()) {
+            throw std::logic_error("There was an error opening the when looking up the administrators!");
+        }
+
+        while(!admin_users.eof()) {
+            std::string file_username, file_salt, file_hash;
+            admin_users >> file_username >> file_salt >> file_hash;
+
+            if(file_username == username) throw std::invalid_argument("Username belongs to an admin!");
+        }
+    }
+
     this->username = username;
     this->publicKey = public_key;
     this->strikeCount = 0;
@@ -72,7 +86,7 @@ void User::pushMessage(std::shared_ptr<Message> msg) const {
 
 // ----------------------------------- //
 
-AdminUser::AdminUser(std::string username, std::string password, std::string public_key) : User(username, public_key) {
+AdminUser::AdminUser(std::string username, std::string password, std::string public_key) : User(username, public_key, true) {
     std::fstream admin_users("./admins.cfg");
     if(!admin_users.is_open()) {
         throw std::logic_error("There was an error opening the when looking up the administrators!");

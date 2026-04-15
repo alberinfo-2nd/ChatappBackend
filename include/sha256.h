@@ -25,6 +25,8 @@ const uint32_t K[64] = {
 		0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
 		0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 };
+
+const uint32_t H_initial[8] = { 0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19 };
 uint32_t H[8] = { 0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19 };
 
 uint32_t right_rotate(uint32_t x, uint32_t n) {
@@ -131,6 +133,8 @@ string sha256(string m) {
 	for (size_t i = 0; i < 8; ++i) {
 		ss << std::hex << std::setw(8) << std::setfill('0') << H[i];
 	}
+
+	std::memcpy(H, H_initial, 8*4);
 
 	return ss.str();
 }
