@@ -1,9 +1,11 @@
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <random>
+#include <filesystem>
 
 #include <sha256.h>
 #include <User.h>
@@ -27,26 +29,12 @@ std::string generateAuthorizationToken(void) {
     return authorizationToken;
 }
 
-User::User(std::string username , std::string public_key, bool is_admin) {
-    if(!is_admin) {
-        std::fstream admin_users("./admins.cfg");
-        if(!admin_users.is_open()) {
-            throw std::logic_error("There was an error opening the when looking up the administrators!");
-        }
-
-        while(!admin_users.eof()) {
-            std::string file_username, file_salt, file_hash;
-            admin_users >> file_username >> file_salt >> file_hash;
-
-            if(file_username == username) throw std::invalid_argument("Username belongs to an admin!");
-        }
-    }
-
+void User::setUsername(std::string username) {
     this->username = username;
-    this->publicKey = public_key;
-    this->strikeCount = 0;
-    
-    this->setAuthorizationToken(generateAuthorizationToken());
+}
+
+void User::setPublicKey(std::string publicKey) {
+    this->publicKey = publicKey;
 }
 
 void User::setAuthorizationToken(std::string token) {
@@ -66,27 +54,73 @@ std::string User::getAuthorizationToken(void) const {
     return this->authorizationToken;
 }
 
+nlohmann::json User::getMessages() {
+    nlohmann::json message_list = nlohmann::json::array({});
+
+    // Get internal message Pointers
+    std::vector<std::shared_ptr<Message>> unreadMessagesPTRs = this->unreadMessages;
+
+    // Extract message
+    for(std::shared_ptr<Message> messagePTR : unreadMessagesPTRs) {
+        message_list.push_back(messagePTR->toJSON());
+    }
+
+    this->unreadMessages.clear();
+
+    return message_list;
+}
+
 //Returns false if the user can stay in the session
 //Returns true if the user has to be kicked
-bool User::report(void) const {
+bool User::report() {
     this->strikeCount++;
-    return this->strikeCount >= 3;
+    return this->strikeCount >= 3;;
 }
 
-std::vector<std::shared_ptr<Message>> User::getMessages(void) const {
-    // Moves ownership of pointer leaves unreadMsesages empty
-    return std::move(this->unreadMessages);
-}
-
-void User::pushMessage(std::shared_ptr<Message> msg) const {
-    //Validating data if want
+void User::pushMessage(std::shared_ptr<Message> msg) {
     this->unreadMessages.push_back(std::move(msg));
 }
 
+// ----------------------------------- //
+
+AnonymousUser::AnonymousUser(std::string username, std::string public_key) {
+    for (auto &p : std::filesystem::recursive_directory_iterator("./")) {
+        if(p.path().extension() != ".cfg") continue;
+
+        std::fstream signed_users_file(p.path().string());
+        if(!signed_users_file.is_open()) {
+            throw std::logic_error("There was an error opening the when looking up the signed users file!");
+        }
+
+        while(!signed_users_file.eof()) {
+            std::string file_username, file_salt, file_hash;
+            signed_users_file >> file_username >> file_salt >> file_hash;
+
+            if(file_username == username) throw std::invalid_argument("Username belongs to a signed user!");
+        }
+    }
+
+    setUsername(username);
+    setPublicKey(public_key);
+    this->strikeCount = 0;
+    
+    setAuthorizationToken(generateAuthorizationToken());
+}
+
+void AnonymousUser::sendMessage(User* recipient, std::string message) {
+    recipient->pushMessage(std::make_shared<Message>(
+        getUsername(),
+        message
+    ));
+}
 
 // ----------------------------------- //
 
-AdminUser::AdminUser(std::string username, std::string password, std::string public_key) : User(username, public_key, true) {
+void SignedUser::setPassword(std::string password) {
+    this->password = password;
+}
+
+AdminUser::AdminUser(std::string username, std::string password, std::string public_key) {
     std::fstream admin_users("./admins.cfg");
     if(!admin_users.is_open()) {
         throw std::logic_error("There was an error opening the when looking up the administrators!");
@@ -101,7 +135,12 @@ AdminUser::AdminUser(std::string username, std::string password, std::string pub
         if(file_username != username) continue;
 
         if(sha256(password.append(file_salt)) == file_hash) {
-            this->password = file_hash;
+            setPassword(file_hash);
+            setUsername(username);
+            setPublicKey(public_key);
+            this->strikeCount = 0;
+
+            setAuthorizationToken(generateAuthorizationToken());
             return;
         } else {
             throw std::invalid_argument("Invalid password!");
@@ -109,6 +148,20 @@ AdminUser::AdminUser(std::string username, std::string password, std::string pub
     }
 
     throw std::invalid_argument("Administrator not found!");
+}
+
+//Returns false all the time, admins cannot be kicked
+bool AdminUser::report() {
+    this->strikeCount++;
+    return false;
+}
+
+void AdminUser::sendMessage(User* recipient, std::string message) {
+    recipient->pushMessage(std::make_shared<Message>(
+        getUsername(),
+        message,
+        getPublicKey()
+    ));
 }
 
 //UserList is defined in User.h

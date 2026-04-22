@@ -4,7 +4,6 @@
 #endif
 
 #include <stdexcept>
-#include <iostream>
 #include <string>
 #include <httplib.h>
 #include <json.hpp>
@@ -14,8 +13,8 @@
 
 int main()
 {
-    UserList<User> userList = UserList<User>();
-    UserList<AdminUser> adminUserList = UserList<AdminUser>();
+    UserList<User*> userList = UserList<User*>();
+    UserList<User*> adminUserList = UserList<User*>();
 
     httplib::Server server;
 
@@ -100,14 +99,23 @@ int main()
 
             if(!user_data.contains("password")) { 
                 // If Normal user
-                User newUser = User(user_data["username"], user_data["public_key"]);
+                AnonymousUser* newUser = new AnonymousUser(user_data["username"], user_data["public_key"]);
                 userList.addUser(newUser);
-                response_message["authorization_token"] = newUser.getAuthorizationToken();
+                response_message["authorization_token"] = newUser->getAuthorizationToken();
             } else {
-                // If Admin user
-                AdminUser newUser = AdminUser(user_data["username"], user_data["password"], user_data["public_key"]);
-                adminUserList.addUser(newUser);
-                response_message["authorization_token"] = newUser.getAuthorizationToken();
+                try {
+                    // If Admin user
+                    AdminUser* newUser = new AdminUser(user_data["username"], user_data["password"], user_data["public_key"]);
+                    adminUserList.addUser(newUser);
+                    response_message["authorization_token"] = newUser->getAuthorizationToken();
+                } catch(std::invalid_argument& e) {
+                    if(std::string(e.what()) == "Administrator not found!") {
+                        // Try other signed users, such as VIP users.
+                        // return;
+                    }
+                    
+                    throw;
+                }
             }
         } catch(std::invalid_argument &e) {
             response.status = 400;
@@ -157,8 +165,8 @@ int main()
         
         for (const auto& user : userList.getUsers()) {
             users.push_back({
-                {"username", user.getUsername()},
-                {"public_key", user.getPublicKey()}    
+                {"username", user->getUsername()},
+                {"public_key", user->getPublicKey()}    
             });
         }    
         response.status = 200;
@@ -184,17 +192,17 @@ int main()
  
             if(user_data["username"] == user_data["recipient"]) throw std::invalid_argument("User cannot send messages to itself!");
 
-            //*** Finding user to message ***/            
+            auto currentUser = userList.searchUser(user_data["username"]); //Returns a reference wrapper
+            if(!currentUser) currentUser = adminUserList.searchUser(user_data["username"]);
+
+            //*** Finding user to message ***/     
             // Check on userList then admin list
-            auto userSearchResult = userList.searchUser(user_data["recipient"]);
+            auto userSearchResult = userList.searchUser(user_data["recipient"]); //Returns a reference wrapper
             if (!userSearchResult) userSearchResult = adminUserList.searchUser(user_data["recipient"]);
             if (!userSearchResult) throw std::invalid_argument("Recipient Not Found");
 
-            // Pushes message to corrisponding user 
-            userSearchResult->get().pushMessage(std::make_shared<Message>(
-                user_data["username"], // Sender
-                user_data["message"]   // Message
-            ));
+            //dereference wrapper to get actual pointer to User
+            currentUser->get()->sendMessage(userSearchResult->get(), user_data["message"]);
         } catch (std::invalid_argument &e){
             response.status = 400;
             response_message["status"] = "Failed";
@@ -226,16 +234,10 @@ int main()
             auto user_data = nlohmann::json::parse(request.body);
 
             // Check user list --- Then admin
-            std::optional<std::reference_wrapper<const User>> userSearchResult = userList.searchUser(user_data["username"]);
+            auto userSearchResult = userList.searchUser(user_data["username"]);
             if (!userSearchResult) userSearchResult = adminUserList.searchUser(user_data["username"]);
 
-            // Get internal message Pointers
-            std::vector<std::shared_ptr<Message>> unreadMessagesPTRs = userSearchResult->get().getMessages();
-
-            // Extract message
-            for(std::shared_ptr<Message> messagePTR : unreadMessagesPTRs) {
-                message_list.push_back(messagePTR->toJSON());
-            }
+            message_list = userSearchResult->get()->getMessages();
 
             response_message["messages"] = message_list;
         } catch(std::invalid_argument &e){
@@ -266,7 +268,7 @@ int main()
             if(!reportedUser) reportedUser = adminUserList.searchUser(user_data["reportedUser"]);
             if(!reportedUser) throw std::invalid_argument("Reported username does not exist!!");
 
-            bool kickUser = reportedUser->get().report();
+            bool kickUser = reportedUser->get()->report();
             if(kickUser) {
                 try {
                     userList.removeUser(user_data["reportedUser"]);

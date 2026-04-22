@@ -7,20 +7,27 @@ class Message {
 private:
     std::string recipientUsername;
     std::string content;
+    std::string public_key;
     std::chrono::system_clock::time_point timestamp;
 
 public:
     //Constructors
-    //Message() : timestamp(std::chrono::system_clock::now()) {}
-    Message(std::string recipient, std::string body) 
-        : recipientUsername(recipient), content(body), timestamp(std::chrono::system_clock::now()){}
+    Message(std::string recipient, std::string body, std::string public_key = "") 
+        : recipientUsername(recipient), content(body), public_key(public_key), timestamp(std::chrono::system_clock::now()){}
     
+    void setPublicKey(std::string public_key) {
+        this->public_key = public_key;
+    }
+
     // Get Functions
     const std::string& getSender() const{
         return(recipientUsername);
     }
     const std::string& getContent() const {
         return(content);
+    }
+    const std::string& getPublicKey() const {
+        return(public_key);
     }
 
     // Return String of formatted timestap
@@ -32,7 +39,9 @@ public:
     }
 
     const nlohmann::json toJSON() const {
-        return {{"timestamp", getTimeStamp()}, {"sender", getSender()}, {"content", getContent()}};
+        nlohmann::json result = {{"timestamp", getTimeStamp()}, {"sender", getSender()}, {"content", getContent()}};
+        if(this->public_key.length() != 0) result.push_back({"public_key", getPublicKey()});
+        return result;
     }
 
 };

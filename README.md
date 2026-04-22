@@ -15,12 +15,17 @@ Backend for ChatApp project for COP3003 - Spring 2026
 
 ## How to Run
 
-### Requirements
+### Running pre-built executable
+Download latest executable from Releases, and execute from command line. An HTTP server will open up on 127.0.0.1 and listen for connections from any client on port 8080
 
-- C++ compiler
+### Building from source
+
+#### Requirements
+
+- GNU C++ compiler (preferrably through MinGW)
 - GNU Make
 
-### Steps
+#### Steps
 
 1. Clone the respository
    `git clone https://github.com/alberinfo-2nd/ChatappBackend`
@@ -60,11 +65,15 @@ Backend for ChatApp project for COP3003 - Spring 2026
 
 ### Inheritance
 
-- AdminUser inherits from the User base class, sharing common traits such as username, while having unique behaviors such as passwords which are retrieved from a text file.
+- There is an abstract class User common to all types of users. From it derives AnonymousUser, which displays typical behaviours from normal users. SignedUser also inherits from User, which parents AdminUser and easily could be extended to other types of user such as VipUser. Each subclass shares common data members and also implements functionality unique to itself.
 
 ### Polymorphism
 
-- Implemented through virtual and override functions. I.e., login changes for normal and admin users, where admin users require a text file lookup for the password hash.
+- Implemented through virtual and override functions. I.e., sendMessage changes for each final user (AnonymousUser or AdminUser), or report changes behaviour depending on whether an AnonymousUser or AdminUser is being reported.
+
+### Abstraction
+
+- Functions are coded in a way such that their clients do not need to be aware of their implementation. This is represented in main where actions taken on UserList or on Users is a chain of helper calls instead of direct data manipulation.
 
 ---
 
